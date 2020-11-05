@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"github.com/awslabs/smithy-go/transport/http"
 	"github.com/go-kit/kit/endpoint"
+	"golang.org/x/net/context"
 )
 
 func makeGeoCodingProxyEndpoint(svc GeoService) endpoint.Endpoint {
@@ -25,4 +28,12 @@ type geocodingResponse struct {
 type reversegeocodingResponse struct {
 	address string `json:"address"`
 	err     string `json:"err, omitempty"`
+}
+
+func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request geocodingRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
 }
