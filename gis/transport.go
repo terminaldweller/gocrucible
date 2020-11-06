@@ -1,33 +1,54 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
-	"github.com/awslabs/smithy-go/transport/http"
 	"github.com/go-kit/kit/endpoint"
-	"golang.org/x/net/context"
+	"io/ioutil"
+	"net/http"
 )
 
-func makeGeoCodingProxyEndpoint(svc GeoService) endpoint.Endpoint {
+func makeGeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
+	return func(_ context.Context, request interface{}) (interface{}, error) {
+		req := request.(geocodingRequest)
+		long, lat, err := svc.GeoCoding(req.Address)
+		if err != nil {
+			return geocodingResponse{long, lat, err.Error()}, nil
+		}
+		return geocodingResponse{long, lat, ""}, nil
+	}
+}
+
+func makeReversegeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
+	return func(_ context.Context, request interface{}) (interface{}, error) {
+		req := request.(reverseGeocodingRequest)
+		address, err := svc.ReverseGeoCoding(req.Long, req.Lat)
+		if err != nil {
+			return reversegeocodingResponse{address, err.Error()}, nil
+		}
+		return reversegeocodingResponse{address, ""}, nil
+	}
 }
 
 type geocodingRequest struct {
-	address string `json:"address"`
+	Address string `json:"address"`
 }
 
 type reverseGeocodingRequest struct {
-	long float32 `json:"long"`
-	lat  float32 `json:"lat"`
+	Long float32 `json:"long"`
+	Lat  float32 `json:"lat"`
 }
 
 type geocodingResponse struct {
-	long float32 `json:"long"`
-	lat  float32 `json:"lat"`
-	err  string  `json:"err, omitempty"`
+	Long float32 `json:"long"`
+	Lat  float32 `json:"lat"`
+	Err  string  `json:"err,omitempty"`
 }
 
 type reversegeocodingResponse struct {
-	address string `json:"address"`
-	err     string `json:"err, omitempty"`
+	Address string `json:"address"`
+	Err     string `json:"err,omitempty"`
 }
 
 func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
@@ -36,4 +57,38 @@ func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, er
 		return nil, err
 	}
 	return request, nil
+}
+
+func decodeReverseGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request reverseGeocodingRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func encodeGeocodingResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	return json.NewEncoder(w).Encode(response)
+}
+
+func encodeGeocingRequest(_ context.Context, r *http.Request, request interface{}) error {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(request); err != nil {
+		return err
+	}
+	r.Body = ioutil.NopCloser(&buf)
+	return nil
+}
+
+func encodeReversegeocodingResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	return json.NewEncoder(w).Encode(response)
+}
+
+func encodeReversegeocodingRequest(_ context.Context, r *http.Request, request interface{}) error {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(request); err != nil {
+		return err
+	}
+	r.Body = ioutil.NopCloser(&buf)
+	return nil
 }
