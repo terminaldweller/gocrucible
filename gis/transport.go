@@ -31,6 +31,21 @@ func makeReversegeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 	}
 }
 
+func makeAutocompleteEndpoint(svc GeoService) endpoint.Endpoint {
+	return func(_ context.Context, request interface{}) (interface{}, error) {
+		req := request.(autocompleteRequest)
+		partial_string, err := svc.Autocomplete(req.PartialString)
+		if err != nil {
+			return autocompleteResponse{partial_string, err.Error()}, nil
+		}
+		return autocompleteResponse{partial_string, ""}, nil
+	}
+}
+
+type autocompleteRequest struct {
+	PartialString string `json:"autocomp"`
+}
+
 type geocodingRequest struct {
 	Address string `json:"address"`
 }
@@ -51,6 +66,11 @@ type reversegeocodingResponse struct {
 	Err     string `json:"err,omitempty"`
 }
 
+type autocompleteResponse struct {
+	Completion string `json:"autocomp"`
+	Err        string `json:"err,omitempty"`
+}
+
 func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request geocodingRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -61,6 +81,14 @@ func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, er
 
 func decodeReverseGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request reverseGeocodingRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, err
+	}
+	return request, nil
+}
+
+func decodeAutocompleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request autocompleteRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, err
 	}
