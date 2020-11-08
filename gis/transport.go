@@ -108,6 +108,10 @@ func encodeGeocingRequest(_ context.Context, r *http.Request, request interface{
 	return nil
 }
 
+func encodeAutocompleteResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	return json.NewEncoder(w).Encode(response)
+}
+
 func encodeReversegeocodingResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	return json.NewEncoder(w).Encode(response)
 }
