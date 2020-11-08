@@ -24,23 +24,38 @@ func makeGeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 func makeReversegeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(reverseGeocodingRequest)
-		address, err := svc.ReverseGeoCoding(req.Long, req.Lat)
+		address, detailedAddress, err := svc.ReverseGeoCoding(req.Long, req.Lat)
 		if err != nil {
-			return reversegeocodingResponse{address, err.Error()}, nil
+			return reversegeocodingResponse{"", DetailedAddress{}, err.Error()}, nil
 		}
-		return reversegeocodingResponse{address, ""}, nil
+		return reversegeocodingResponse{address, detailedAddress, ""}, nil
 	}
 }
 
 func makeAutocompleteEndpoint(svc GeoService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(autocompleteRequest)
-		partial_string, err := svc.Autocomplete(req.PartialString)
+		geoResponse, err := svc.Autocomplete(req.PartialString)
 		if err != nil {
-			return autocompleteResponse{partial_string, err.Error()}, nil
+			return autocompleteResponse{geoResponse, err.Error()}, nil
 		}
-		return autocompleteResponse{partial_string, ""}, nil
+		return autocompleteResponse{geoResponse, ""}, nil
 	}
+}
+
+type DetailedAddress struct {
+	City            string `json:"city"`
+	CityDistrict    string `json:"city_district"`
+	Construction    string `json:"construction"`
+	Continent       string `json:"continent"`
+	Country         string `json:"country"`
+	CountryCode     string `json:"country_code"`
+	HouseNumber     string `json:"house_number"`
+	Neighbourhood   string `json:"neighbourhood"`
+	PostCode        string `json:"postcode"`
+	Public_Building string `json:"public_building"`
+	State           string `json:"state"`
+	Suburb          string `json:"suburb"`
 }
 
 type autocompleteRequest struct {
@@ -66,13 +81,14 @@ type geocodingResponse struct {
 }
 
 type reversegeocodingResponse struct {
-	Address string `json:"address"`
-	Err     string `json:"err,omitempty"`
+	DisplayName     string `json:"display_name"`
+	DetailedAddress `json:"address"`
+	Err             string `json:"err,omitempty"`
 }
 
 type autocompleteResponse struct {
-	Completion string `json:"autocomp"`
-	Err        string `json:"err,omitempty"`
+	Addresses []nominatimGeoResponse `json:"detailed_address"`
+	Err       string                 `json:"err,omitempty"`
 }
 
 func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
