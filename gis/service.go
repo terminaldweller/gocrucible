@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	// expand "github.com/openvenues/gopostal/expand"
-	parser "github.com/openvenues/gopostal/parser"
+	// parser "github.com/openvenues/gopostal/parser"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
+	// "strings"
 )
 
 var nominatimSearchEP string = "https://nominatim.openstreetmap.org/?addressdetails=1&q="
@@ -59,16 +59,16 @@ type nominatimReverseResponse struct {
 }
 
 func makeGeoSearchQuery(address string, limit uint8) (out string) {
-	parsedAddress := parser.ParseAddress(address)
-	var searchQuery string
-	for key, value := range parsedAddress {
-		fmt.Println(key, value)
-		searchQuery += value.Value + "+"
-	}
-	searchQuery = strings.ReplaceAll(searchQuery, " ", "+")
-	searchQuery += nomipostSearch
-	URL := nominatimSearchEP + searchQuery
-	URL = "https://nominatim.openstreetmap.org/?addressdetails=1&q=bakery+in+berlin+wedding&format=json&limit=10"
+	// parsedAddress := parser.ParseAddress(address)
+	// var searchQuery string
+	// for key, value := range parsedAddress {
+	// 	fmt.Println(key, value)
+	// 	searchQuery += value.Value + "+"
+	// }
+	// searchQuery = strings.ReplaceAll(searchQuery, " ", "+")
+	// searchQuery += nomipostSearch
+	// URL := nominatimSearchEP + searchQuery
+	URL := "https://nominatim.openstreetmap.org/?addressdetails=1&q=bakery+in+berlin+wedding&format=json&limit=10"
 	fmt.Println(URL)
 	return URL
 }
