@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/go-kit/kit/endpoint"
 	"io/ioutil"
 	"net/http"
@@ -50,14 +51,17 @@ type geocodingRequest struct {
 	Address string `json:"address"`
 }
 
+type geocodingRequestV2 struct {
+}
+
 type reverseGeocodingRequest struct {
-	Long float32 `json:"long"`
-	Lat  float32 `json:"lat"`
+	Long float64 `json:"lon"`
+	Lat  float64 `json:"lat"`
 }
 
 type geocodingResponse struct {
-	Long float32 `json:"long"`
-	Lat  float32 `json:"lat"`
+	Long float64 `json:"lon"`
+	Lat  float64 `json:"lat"`
 	Err  string  `json:"err,omitempty"`
 }
 
@@ -82,8 +86,10 @@ func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, er
 func decodeReverseGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request reverseGeocodingRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		fmt.Println("error error error")
 		return nil, err
 	}
+	fmt.Println(request)
 	return request, nil
 }
 
