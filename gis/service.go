@@ -15,7 +15,7 @@ var nominatimReverseEP string = "https://nominatim.openstreetmap.org/reverse?"
 
 type GeoService interface {
 	GeoCoding(address string, lon float64, lat float64) (float64, float64, error)
-	ReverseGeoCoding(long, lat float64) (string, DetailedAddress, error)
+	ReverseGeoCoding(long, lat float64) (string, DetailedAddress, bBox, error)
 	Autocomplete(partial_address string, lon float64, lat float64) ([]nominatimGeoResponse, error)
 }
 
@@ -52,7 +52,7 @@ type nominatimReverseResponse struct {
 	DisplayName     string  `json:"display_name"`
 	Name            string  `json:"name"`
 	DetailedAddress `json:"address"`
-	BoundingBox     [4]string `json:"bounding_box"`
+	BoundingBox     [4]string `json:"boundingbox"`
 }
 
 //FIXME
@@ -102,7 +102,7 @@ func PopulateReverseGeodingResponse(response nominatimReverseResponse) reversege
 	return result
 }
 
-func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, error) {
+func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, bBox, error) {
 	lonStr := strconv.FormatFloat(lon, 'f', -1, 64)
 	latStr := strconv.FormatFloat(lat, 'f', -1, 64)
 	URL := "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + latStr + "&lon=" + lonStr
@@ -117,9 +117,15 @@ func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, e
 	var nmResponse nominatimReverseResponse
 	if err := json.Unmarshal(body, &nmResponse); err != nil {
 		fmt.Println(err.Error())
-		return "", DetailedAddress{}, err
+		return "", DetailedAddress{}, bBox{}, err
 	}
-	return nmResponse.DisplayName, nmResponse.DetailedAddress, nil
+	var bb bBox
+	bb.Bottom, _ = strconv.ParseFloat(nmResponse.BoundingBox[0], 64)
+	bb.Left, _ = strconv.ParseFloat(nmResponse.BoundingBox[1], 64)
+	bb.Right, _ = strconv.ParseFloat(nmResponse.BoundingBox[2], 64)
+	bb.Top, _ = strconv.ParseFloat(nmResponse.BoundingBox[3], 64)
+
+	return nmResponse.DisplayName, nmResponse.DetailedAddress, bb, nil
 }
 
 func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) ([]nominatimGeoResponse, error) {

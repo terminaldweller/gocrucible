@@ -24,11 +24,11 @@ func makeGeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 func makeReversegeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(reverseGeocodingRequest)
-		address, detailedAddress, err := svc.ReverseGeoCoding(req.Long, req.Lat)
+		address, detailedAddress, bbox, err := svc.ReverseGeoCoding(req.Long, req.Lat)
 		if err != nil {
-			return reversegeocodingResponse{"", DetailedAddress{}, err.Error()}, nil
+			return reversegeocodingResponse{"", DetailedAddress{}, bBox{}, err.Error()}, nil
 		}
-		return reversegeocodingResponse{address, detailedAddress, ""}, nil
+		return reversegeocodingResponse{address, detailedAddress, bbox, ""}, nil
 	}
 }
 
@@ -91,6 +91,7 @@ type geocodingResponse struct {
 type reversegeocodingResponse struct {
 	DisplayName     string `json:"display_name"`
 	DetailedAddress `json:"address"`
+	bBox            `json:"bbox"`
 	Err             string `json:"err,omitempty"`
 }
 
