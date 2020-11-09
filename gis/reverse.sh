@@ -1,3 +1,3 @@
 #!/usr/bin/sh
 
-curl -H "Content-Type: application/json" -XPOST -d'{"lon":-58.70521,"lat":-34.4407, "len":-34.4407}' localhost:8080/reverse
+curl -H "Content-Type: application/json" -XGET -d'{"lon":51.52103,"lat":35.7988357, "len":-34.4407}' localhost:8080/reverse
