@@ -3,13 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	// expand "github.com/openvenues/gopostal/expand"
-	// parser "github.com/openvenues/gopostal/parser"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
-	// "strings"
 )
 
 var nominatimSearchEP string = "https://nominatim.openstreetmap.org/search?q="
@@ -17,9 +14,9 @@ var nomipostSearch string = "&format=josn&limit=1"
 var nominatimReverseEP string = "https://nominatim.openstreetmap.org/reverse?"
 
 type GeoService interface {
-	GeoCoding(address string) (float64, float64, error)
+	GeoCoding(address string, bbox bBox) (float64, float64, error)
 	ReverseGeoCoding(long, lat float64) (string, DetailedAddress, error)
-	Autocomplete(partial_address string) ([]nominatimGeoResponse, error)
+	Autocomplete(partial_address string, bbox bBox) ([]nominatimGeoResponse, error)
 }
 
 type geoService struct{}
@@ -58,14 +55,18 @@ type nominatimReverseResponse struct {
 	BoundingBox     [4]string `json:"bounding_box"`
 }
 
-func makeGeoSearchQuery(address string, limit uint8) (out string) {
-	URL := nominatimSearchEP + address + "&format=json&limit=" + strconv.FormatUint(uint64(limit), 10)
+func makeGeoSearchQuery(address string, limit uint8, tehranBBox bBox) (out string) {
+	URL := nominatimSearchEP + address + "&format=json&limit=" + strconv.FormatUint(uint64(limit), 10) + "&viewbox=" + strconv.FormatFloat(tehranBBox.Left, 'f', 6, 64) + strconv.FormatFloat(tehranBBox.Bottom, 'f', 6, 64) + strconv.FormatFloat(tehranBBox.Right, 'f', 6, 64) + strconv.FormatFloat(tehranBBox.Top, 'f', 6, 64)
 	fmt.Println(URL)
 	return URL
 }
 
-func (geoService) GeoCoding(address string) (float64, float64, error) {
-	URL := makeGeoSearchQuery(address, 1)
+func (geoService) GeoCoding(address string, bbox bBox) (float64, float64, error) {
+	defaultBbox := bbox
+	if bbox.Bottom == 0 && bbox.Left == 0 && bbox.Right == 0 && bbox.Top == 0 {
+		defaultBbox = bBox{51.247101, 35.614884, 51.564331, 35.775486}
+	}
+	URL := makeGeoSearchQuery(address, 1, defaultBbox)
 
 	resp, err := http.Get(URL)
 	handleError(err)
@@ -110,8 +111,12 @@ func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, e
 	return nmResponse.DisplayName, nmResponse.DetailedAddress, nil
 }
 
-func (geoService) Autocomplete(partialAddress string) ([]nominatimGeoResponse, error) {
-	URL := makeGeoSearchQuery(partialAddress, 10)
+func (geoService) Autocomplete(partialAddress string, bbox bBox) ([]nominatimGeoResponse, error) {
+	defaultBbox := bbox
+	if bbox.Bottom == 0 && bbox.Left == 0 && bbox.Right == 0 && bbox.Top == 0 {
+		defaultBbox = bBox{51.247101, 35.614884, 51.564331, 35.775486}
+	}
+	URL := makeGeoSearchQuery(partialAddress, 10, defaultBbox)
 
 	resp, err := http.Get(URL)
 	handleError(err)
