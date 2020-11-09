@@ -59,7 +59,7 @@ type nominatimReverseResponse struct {
 }
 
 func makeGeoSearchQuery(address string, limit uint8) (out string) {
-	URL := nominatimSearchEP + address + "&format=json&limit=1"
+	URL := nominatimSearchEP + address + "&format=json&limit=" + strconv.FormatUint(uint64(limit), 8)
 	fmt.Println(URL)
 	return URL
 }
