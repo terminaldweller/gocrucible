@@ -10,7 +10,6 @@ RUN git clone http://github.com/terminaldweller/gocrucible
 RUN (cd gocrucible/gis && go build)
 
 FROM alpine:3.12
-RUN apk update && apk upgrade
 WORKDIR /root/
 COPY --from=builder /gocrucible/gis/gis .
 EXPOSE 8080
