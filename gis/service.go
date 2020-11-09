@@ -12,7 +12,7 @@ import (
 	// "strings"
 )
 
-var nominatimSearchEP string = "https://nominatim.openstreetmap.org/?addressdetails=1&q="
+var nominatimSearchEP string = "https://nominatim.openstreetmap.org/search?q="
 var nomipostSearch string = "&format=josn&limit=1"
 var nominatimReverseEP string = "https://nominatim.openstreetmap.org/reverse?"
 
@@ -59,16 +59,7 @@ type nominatimReverseResponse struct {
 }
 
 func makeGeoSearchQuery(address string, limit uint8) (out string) {
-	// parsedAddress := parser.ParseAddress(address)
-	// var searchQuery string
-	// for key, value := range parsedAddress {
-	// 	fmt.Println(key, value)
-	// 	searchQuery += value.Value + "+"
-	// }
-	// searchQuery = strings.ReplaceAll(searchQuery, " ", "+")
-	// searchQuery += nomipostSearch
-	// URL := nominatimSearchEP + searchQuery
-	URL := "https://nominatim.openstreetmap.org/?addressdetails=1&q=bakery+in+berlin+wedding&format=json&limit=10"
+	URL := nominatimSearchEP + address + "&format=json&limit=1"
 	fmt.Println(URL)
 	return URL
 }
