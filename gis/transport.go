@@ -13,7 +13,7 @@ import (
 func makeGeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(geocodingRequest)
-		long, lat, err := svc.GeoCoding(req.Address, req.boundBox)
+		long, lat, err := svc.GeoCoding(req.Address, req.Lon, req.Lat)
 		if err != nil {
 			return geocodingResponse{long, lat, err.Error()}, nil
 		}
@@ -35,7 +35,7 @@ func makeReversegeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 func makeAutocompleteEndpoint(svc GeoService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(autocompleteRequest)
-		geoResponse, err := svc.Autocomplete(req.PartialString, req.boundBox)
+		geoResponse, err := svc.Autocomplete(req.PartialString, req.Lon, req.Lat)
 		if err != nil {
 			return autocompleteResponse{geoResponse, err.Error()}, nil
 		}
@@ -59,13 +59,15 @@ type DetailedAddress struct {
 }
 
 type geocodingRequest struct {
-	Address  string `json:"address"`
-	boundBox bBox
+	Address string  `json:"address"`
+	Lon     float64 `json:"lon"`
+	Lat     float64 `json:"lat"`
 }
 
 type autocompleteRequest struct {
-	PartialString string `json:"autocomp"`
-	boundBox      bBox
+	PartialString string  `json:"autocomp"`
+	Lon           float64 `json:"lon"`
+	Lat           float64 `json:"lat"`
 }
 
 type reverseGeocodingRequest struct {
