@@ -13,4 +13,3 @@ FROM alpine:3.12
 WORKDIR /root/
 COPY --from=builder /gocrucible/gis/gis .
 EXPOSE 8080
-RUN ln /root/gis /usr/bin/gis
