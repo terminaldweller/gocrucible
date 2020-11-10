@@ -16,22 +16,22 @@ import (
 func makeGeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(geocodingRequest)
-		long, lat, err := svc.GeoCoding(req.Address, req.Lon, req.Lat)
+		long, lat, address, detailedAddress, bbox, err := svc.GeoCoding(req.Address, req.Lon, req.Lat)
 		if err != nil {
-			return geocodingResponse{long, lat, err.Error()}, nil
+			return geocodingResponse{0, 0, "", DetailedAddress{}, bBox{}, err.Error()}, nil
 		}
-		return geocodingResponse{long, lat, ""}, nil
+		return geocodingResponse{long, lat, address, detailedAddress, bbox, ""}, nil
 	}
 }
 
 func makeReversegeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(reverseGeocodingRequest)
-		address, detailedAddress, bbox, err := svc.ReverseGeoCoding(req.Long, req.Lat)
+		address, detailedAddress, err := svc.ReverseGeoCoding(req.Long, req.Lat)
 		if err != nil {
-			return reversegeocodingResponse{"", DetailedAddress{}, bBox{}, err.Error()}, nil
+			return reversegeocodingResponse{"", DetailedAddress{}, err.Error()}, nil
 		}
-		return reversegeocodingResponse{address, detailedAddress, bbox, ""}, nil
+		return reversegeocodingResponse{address, detailedAddress, ""}, nil
 	}
 }
 
@@ -86,15 +86,18 @@ type bBox struct {
 }
 
 type geocodingResponse struct {
-	Long float64 `json:"lon"`
-	Lat  float64 `json:"lat"`
-	Err  string  `json:"err,omitempty"`
+	Long            float64 `json:"lon"`
+	Lat             float64 `json:"lat"`
+	Address         string  `json:"address"`
+	DetailedAddress `json:"structured_address"`
+	bBox            `json:"boundingbox"`
+	Err             string `json:"err,omitempty"`
 }
 
+// FIXME-probably needs libpostal or pelias
 type reversegeocodingResponse struct {
-	DisplayName     string `json:"display_name"`
-	DetailedAddress `json:"address"`
-	bBox            `json:"bbox"`
+	DisplayName     string `json:"address"`
+	DetailedAddress `json:"structured_address"`
 	Err             string `json:"err,omitempty"`
 }
 
@@ -143,6 +146,7 @@ func decodeReverseGeocodingRequest(_ context.Context, r *http.Request) (interfac
 		}
 	}
 
+	fmt.Println(params)
 	fmt.Println(request)
 	return request, nil
 }
@@ -175,7 +179,7 @@ func encodeGeocodingResponse(_ context.Context, w http.ResponseWriter, response 
 	return json.NewEncoder(w).Encode(response)
 }
 
-func encodeGeocingRequest(_ context.Context, r *http.Request, request interface{}) error {
+func encodeGeocodingRequest(_ context.Context, r *http.Request, request interface{}) error {
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(request); err != nil {
 		return err

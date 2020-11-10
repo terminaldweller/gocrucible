@@ -14,8 +14,8 @@ var searchQueryParams string = "&format=json&countrycodes=ir&dedupe=1&addressdet
 var nominatimReverseEP string = "https://nominatim.openstreetmap.org/reverse?"
 
 type GeoService interface {
-	GeoCoding(address string, lon float64, lat float64) (float64, float64, error)
-	ReverseGeoCoding(long, lat float64) (string, DetailedAddress, bBox, error)
+	GeoCoding(address string, lon float64, lat float64) (float64, float64, string, DetailedAddress, bBox, error)
+	ReverseGeoCoding(long, lat float64) (string, DetailedAddress, error)
 	Autocomplete(partial_address string, lon float64, lat float64) ([]nominatimGeoResponse, error)
 }
 
@@ -71,12 +71,28 @@ func makeGeoSearchQuery(address string, limit uint8, tehranBBox bBox) (out strin
 	return URL
 }
 
-func (geoService) GeoCoding(address string, lon float64, lat float64) (float64, float64, error) {
+//FIXME
+func buildAddress(nmResponse nominatimGeoResponse) string {
+	var address string
+	if nmResponse.DetailedAddress.Suburb != "" {
+		address += nmResponse.DetailedAddress.Suburb + ","
+	}
+	if nmResponse.DetailedAddress.Neighbourhood != "" {
+		address += nmResponse.DetailedAddress.Neighbourhood + ","
+	}
+	if nmResponse.DetailedAddress.HouseNumber != "" {
+		address += nmResponse.DetailedAddress.HouseNumber
+	}
+
+	return address
+}
+
+func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) (float64, float64, string, DetailedAddress, bBox, error) {
 	defaultBbox := getBBoxFromLocation(lon, lat)
 	if lon == 0 && lat == 0 {
 		defaultBbox = bBox{51.247101, 35.614884, 51.564331, 35.775486}
 	}
-	URL := makeGeoSearchQuery(address, 1, defaultBbox)
+	URL := makeGeoSearchQuery(searchTerm, 10, defaultBbox)
 
 	fmt.Println(URL)
 	resp, err := http.Get(URL)
@@ -89,12 +105,23 @@ func (geoService) GeoCoding(address string, lon float64, lat float64) (float64, 
 	var nmResponse []nominatimGeoResponse
 	if err := json.Unmarshal(body, &nmResponse); err != nil {
 		fmt.Println(err.Error())
-		return 0, 0, err
+		return 0, 0, "", DetailedAddress{}, bBox{}, err
 	}
 	fmt.Println(nmResponse[0].Lat, nmResponse[0].Lon)
 	lonRespone, err := strconv.ParseFloat(nmResponse[0].Lon, 32)
 	latResponse, err := strconv.ParseFloat(nmResponse[0].Lat, 32)
-	return lonRespone, latResponse, nil
+
+	detailedAddress := nmResponse[0].DetailedAddress
+
+	address := buildAddress(nmResponse[0])
+
+	var boundingbox bBox
+	boundingbox.Bottom, _ = strconv.ParseFloat(nmResponse[0].BoundingBox[0], 64)
+	boundingbox.Left, _ = strconv.ParseFloat(nmResponse[0].BoundingBox[1], 64)
+	boundingbox.Right, _ = strconv.ParseFloat(nmResponse[0].BoundingBox[2], 64)
+	boundingbox.Top, _ = strconv.ParseFloat(nmResponse[0].BoundingBox[3], 64)
+
+	return lonRespone, latResponse, address, detailedAddress, boundingbox, nil
 }
 
 func PopulateReverseGeodingResponse(response nominatimReverseResponse) reversegeocodingResponse {
@@ -102,7 +129,7 @@ func PopulateReverseGeodingResponse(response nominatimReverseResponse) reversege
 	return result
 }
 
-func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, bBox, error) {
+func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, error) {
 	lonStr := strconv.FormatFloat(lon, 'f', -1, 64)
 	latStr := strconv.FormatFloat(lat, 'f', -1, 64)
 	URL := "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + latStr + "&lon=" + lonStr
@@ -117,7 +144,7 @@ func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, b
 	var nmResponse nominatimReverseResponse
 	if err := json.Unmarshal(body, &nmResponse); err != nil {
 		fmt.Println(err.Error())
-		return "", DetailedAddress{}, bBox{}, err
+		return "", DetailedAddress{}, err
 	}
 	var bb bBox
 	bb.Bottom, _ = strconv.ParseFloat(nmResponse.BoundingBox[0], 64)
@@ -125,7 +152,12 @@ func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, b
 	bb.Right, _ = strconv.ParseFloat(nmResponse.BoundingBox[2], 64)
 	bb.Top, _ = strconv.ParseFloat(nmResponse.BoundingBox[3], 64)
 
-	return nmResponse.DisplayName, nmResponse.DetailedAddress, bb, nil
+	return nmResponse.DisplayName, nmResponse.DetailedAddress, nil
+}
+
+// FIXME-need a ranking function
+func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
+	return nmResponse
 }
 
 func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) ([]nominatimGeoResponse, error) {
@@ -149,6 +181,7 @@ func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) 
 		return []nominatimGeoResponse{}, err
 	}
 	fmt.Println(nmResponse)
+	nmResponse = rankCompletions(nmResponse)
 	return nmResponse, nil
 }
 
