@@ -10,7 +10,7 @@ import (
 )
 
 var nominatimSearchEP string = "https://nominatim.openstreetmap.org/search?q="
-var searchQueryParams string = "&format=json&countrycodes=ir&dedupe=1&addressdetails=1"
+var searchQueryParams string = "&format=json&countrycodes=ir&dedupe=1&addressdetails=1&bounded=1"
 var nominatimReverseEP string = "https://nominatim.openstreetmap.org/reverse?"
 
 type GeoService interface {
