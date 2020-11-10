@@ -5,9 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/kit/endpoint"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strconv"
+
+	"github.com/go-kit/kit/endpoint"
 )
 
 func makeGeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
@@ -102,9 +105,23 @@ type autocompleteResponse struct {
 
 func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request geocodingRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	params, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
 		return nil, err
 	}
+	for k, v := range params {
+		switch k {
+		case "address":
+			request.Address = v[0]
+		case "lon":
+			request.Lon, _ = strconv.ParseFloat(v[0], 64)
+		case "lat":
+			request.Lat, _ = strconv.ParseFloat(v[0], 64)
+		default:
+		}
+	}
+	// if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	// }
 	return request, nil
 }
 
@@ -127,7 +144,7 @@ func decodeAutocompleteRequest(_ context.Context, r *http.Request) (interface{},
 }
 
 func encodeGeocodingResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
-	w.Header().Set("Content-Type", "application/josn")
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(response)
 }
 
@@ -141,12 +158,12 @@ func encodeGeocingRequest(_ context.Context, r *http.Request, request interface{
 }
 
 func encodeAutocompleteResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
-	w.Header().Set("Content-Type", "application/josn")
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(response)
 }
 
 func encodeReversegeocodingResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
-	w.Header().Set("Content-Type", "application/josn")
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(response)
 }
 
