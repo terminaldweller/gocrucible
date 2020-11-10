@@ -127,6 +127,7 @@ func decodeAutocompleteRequest(_ context.Context, r *http.Request) (interface{},
 }
 
 func encodeGeocodingResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	w.Header().Set("Content-Type", "application/josn")
 	return json.NewEncoder(w).Encode(response)
 }
 
@@ -140,10 +141,12 @@ func encodeGeocingRequest(_ context.Context, r *http.Request, request interface{
 }
 
 func encodeAutocompleteResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	w.Header().Set("Content-Type", "application/josn")
 	return json.NewEncoder(w).Encode(response)
 }
 
 func encodeReversegeocodingResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	w.Header().Set("Content-Type", "application/josn")
 	return json.NewEncoder(w).Encode(response)
 }
 
