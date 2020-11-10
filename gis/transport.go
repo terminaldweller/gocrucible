@@ -109,6 +109,7 @@ func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
+
 	for k, v := range params {
 		switch k {
 		case "address":
@@ -120,26 +121,52 @@ func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, er
 		default:
 		}
 	}
-	// if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-	// }
+
+	fmt.Println(request)
 	return request, nil
 }
 
 func decodeReverseGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request reverseGeocodingRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		fmt.Println("error error error")
+	params, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
 		return nil, err
 	}
+
+	for k, v := range params {
+		switch k {
+		case "lon":
+			request.Long, _ = strconv.ParseFloat(v[0], 64)
+		case "lat":
+			request.Lat, _ = strconv.ParseFloat(v[0], 64)
+		default:
+		}
+	}
+
 	fmt.Println(request)
 	return request, nil
 }
 
 func decodeAutocompleteRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request autocompleteRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	params, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
 		return nil, err
 	}
+
+	for k, v := range params {
+		switch k {
+		case "partial_address":
+			request.PartialString = v[0]
+		case "lat":
+			request.Lat, _ = strconv.ParseFloat(v[0], 64)
+		case "lon":
+			request.Lon, _ = strconv.ParseFloat(v[0], 64)
+		default:
+		}
+	}
+
+	fmt.Println(request)
 	return request, nil
 }
 
