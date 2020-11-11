@@ -16,11 +16,11 @@ import (
 func makeGeoCodingEndpoint(svc GeoService) endpoint.Endpoint {
 	return func(_ context.Context, request interface{}) (interface{}, error) {
 		req := request.(geocodingRequest)
-		long, lat, address, detailedAddress, bbox, err := svc.GeoCoding(req.Address, req.Lon, req.Lat)
+		searchResults, err := svc.GeoCoding(req.Address, req.Lon, req.Lat)
 		if err != nil {
-			return geocodingResponse{0, 0, "", DetailedAddress{}, bBox{}, err.Error()}, nil
+			return geocodingResponse{searchResults, err.Error()}, nil
 		}
-		return geocodingResponse{long, lat, address, detailedAddress, bbox, ""}, nil
+		return geocodingResponse{searchResults, ""}, nil
 	}
 }
 
@@ -85,13 +85,17 @@ type bBox struct {
 	Top    float64
 }
 
-type geocodingResponse struct {
+type geocodingResponseElement struct {
 	Long            float64 `json:"lon"`
 	Lat             float64 `json:"lat"`
 	Address         string  `json:"address"`
 	DetailedAddress `json:"structured_address"`
 	bBox            `json:"boundingbox"`
-	Err             string `json:"err,omitempty"`
+}
+
+type geocodingResponse struct {
+	SearchResults []geocodingResponseElement `json:"search_results"`
+	Err           string                     `json:"err,omitempty"`
 }
 
 // FIXME-probably needs libpostal or pelias

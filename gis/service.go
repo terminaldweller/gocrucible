@@ -14,7 +14,7 @@ var searchQueryParams string = "&format=json&countrycodes=ir&dedupe=1&addressdet
 var nominatimReverseEP string = "https://nominatim.openstreetmap.org/reverse?"
 
 type GeoService interface {
-	GeoCoding(address string, lon float64, lat float64) (float64, float64, string, DetailedAddress, bBox, error)
+	GeoCoding(address string, lon float64, lat float64) ([]geocodingResponseElement, error)
 	ReverseGeoCoding(long, lat float64) (string, DetailedAddress, error)
 	Autocomplete(partial_address string, lon float64, lat float64) ([]nominatimGeoResponse, error)
 }
@@ -87,7 +87,7 @@ func buildAddress(nmResponse nominatimGeoResponse) string {
 	return address
 }
 
-func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) (float64, float64, string, DetailedAddress, bBox, error) {
+func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geocodingResponseElement, error) {
 	defaultBbox := getBBoxFromLocation(lon, lat)
 	if lon == 0 && lat == 0 {
 		defaultBbox = bBox{51.247101, 35.614884, 51.564331, 35.775486}
@@ -103,25 +103,30 @@ func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) (float6
 	handleError(err)
 
 	var nmResponse []nominatimGeoResponse
+	var result []geocodingResponseElement
 	if err := json.Unmarshal(body, &nmResponse); err != nil {
 		fmt.Println(err.Error())
-		return 0, 0, "", DetailedAddress{}, bBox{}, err
+		return []geocodingResponseElement{}, err
 	}
-	fmt.Println(nmResponse[0].Lat, nmResponse[0].Lon)
-	lonRespone, err := strconv.ParseFloat(nmResponse[0].Lon, 32)
-	latResponse, err := strconv.ParseFloat(nmResponse[0].Lat, 32)
 
-	detailedAddress := nmResponse[0].DetailedAddress
+	fmt.Println(nmResponse)
+	for i := 0; i < len(nmResponse); i++ {
+		fmt.Println("begin")
+		result[i].Long, _ = strconv.ParseFloat(nmResponse[i].Lon, 32)
+		result[i].Lat, _ = strconv.ParseFloat(nmResponse[i].Lat, 32)
 
-	address := buildAddress(nmResponse[0])
+		result[i].bBox.Bottom, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[0], 64)
+		result[i].bBox.Left, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[1], 64)
+		result[i].bBox.Right, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[2], 64)
+		result[i].bBox.Top, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[3], 64)
 
-	var boundingbox bBox
-	boundingbox.Bottom, _ = strconv.ParseFloat(nmResponse[0].BoundingBox[0], 64)
-	boundingbox.Left, _ = strconv.ParseFloat(nmResponse[0].BoundingBox[1], 64)
-	boundingbox.Right, _ = strconv.ParseFloat(nmResponse[0].BoundingBox[2], 64)
-	boundingbox.Top, _ = strconv.ParseFloat(nmResponse[0].BoundingBox[3], 64)
+		result[i].Address = buildAddress(nmResponse[i])
 
-	return lonRespone, latResponse, address, detailedAddress, boundingbox, nil
+		result[i].DetailedAddress = nmResponse[i].DetailedAddress
+		fmt.Println("end")
+	}
+
+	return result, nil
 }
 
 func PopulateReverseGeodingResponse(response nominatimReverseResponse) reversegeocodingResponse {
