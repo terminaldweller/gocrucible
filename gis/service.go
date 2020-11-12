@@ -88,6 +88,7 @@ func buildAddress(nmResponse nominatimGeoResponse) string {
 }
 
 func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geocodingResponseElement, error) {
+	fmt.Println("geocode")
 	defaultBbox := getBBoxFromLocation(lon, lat)
 	if lon == 0 && lat == 0 {
 		defaultBbox = bBox{51.247101, 35.614884, 51.564331, 35.775486}
@@ -134,7 +135,54 @@ func PopulateReverseGeodingResponse(response nominatimReverseResponse) reversege
 	return result
 }
 
+func getNominatimReverseGeoResponse(latStr, lonStr string, zoomLevel uint8) (string, error) {
+	URL := "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" +
+		latStr + "&lon=" + lonStr + "&zoom=" + strconv.FormatUint(uint64(zoomLevel), 8) + "14"
+	resp, err := http.Get(URL)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	handleError(err)
+
+	var nmResponse nominatimReverseResponse
+	if err := json.Unmarshal(body, &nmResponse); err != nil {
+		fmt.Println(err.Error())
+		return "", err
+	}
+
+	return nmResponse.Name, nil
+}
+
+func makeAddress(lonStr, latStr string) string {
+	var result string
+
+	suburbName, _ := getNominatimReverseGeoResponse(latStr, lonStr, 14)
+	majorStreetName, _ := getNominatimReverseGeoResponse(latStr, lonStr, 16)
+	majorAndMinorStreetName, _ := getNominatimReverseGeoResponse(latStr, lonStr, 17)
+	buildingName, _ := getNominatimReverseGeoResponse(latStr, lonStr, 18)
+
+	if suburbName != "" {
+		result += suburbName
+	}
+
+	if majorStreetName != "" && majorAndMinorStreetName != "" {
+		if majorStreetName != majorAndMinorStreetName {
+			result += majorStreetName + majorAndMinorStreetName
+		} else {
+			result += majorStreetName
+		}
+	}
+
+	if buildingName != "" {
+		result += buildingName
+	}
+
+	fmt.Println("result:" + result)
+	return result
+}
+
 func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, error) {
+	fmt.Println("reverse")
 	lonStr := strconv.FormatFloat(lon, 'f', -1, 64)
 	latStr := strconv.FormatFloat(lat, 'f', -1, 64)
 	URL := "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + latStr + "&lon=" + lonStr
@@ -151,13 +199,16 @@ func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, e
 		fmt.Println(err.Error())
 		return "", DetailedAddress{}, err
 	}
+
 	var bb bBox
 	bb.Bottom, _ = strconv.ParseFloat(nmResponse.BoundingBox[0], 64)
 	bb.Left, _ = strconv.ParseFloat(nmResponse.BoundingBox[1], 64)
 	bb.Right, _ = strconv.ParseFloat(nmResponse.BoundingBox[2], 64)
 	bb.Top, _ = strconv.ParseFloat(nmResponse.BoundingBox[3], 64)
 
-	return nmResponse.DisplayName, nmResponse.DetailedAddress, nil
+	address := makeAddress(nmResponse.Lon, nmResponse.Lat)
+
+	return address, nmResponse.DetailedAddress, nil
 }
 
 // FIXME-need a ranking function
@@ -166,6 +217,7 @@ func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 }
 
 func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) ([]nominatimGeoResponse, error) {
+	fmt.Println("autocomp")
 	defaultBbox := getBBoxFromLocation(lon, lat)
 	if lon == 0 && lat == 0 {
 		defaultBbox = bBox{51.247101, 35.614884, 51.564331, 35.775486}
