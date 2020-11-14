@@ -16,7 +16,7 @@ var nominatimReverseEP string = "https://nominatim.openstreetmap.org/reverse?"
 type GeoService interface {
 	GeoCoding(address string, lon float64, lat float64) ([]geocodingResponseElement, error)
 	ReverseGeoCoding(long, lat float64) (string, DetailedAddress, error)
-	Autocomplete(partial_address string, lon float64, lat float64) ([]nominatimGeoResponse, error)
+	Autocomplete(partial_address string, lon float64, lat float64) ([]autocompleteResponseElement, error)
 }
 
 type geoService struct{}
@@ -34,6 +34,7 @@ type nominatimGeoResponse struct {
 	OsmID           float64   `json:"osm_id"`
 	OsmType         string    `json:"osd_type"`
 	PlaceID         float64   `json:"place_id"`
+	Name            string    `json:"name"`
 	Type            string    `json:"type"`
 }
 
@@ -88,7 +89,6 @@ func buildAddress(nmResponse nominatimGeoResponse) string {
 }
 
 func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geocodingResponseElement, error) {
-	fmt.Println("geocode")
 	defaultBbox := getBBoxFromLocation(lon, lat)
 	if lon == 0 && lat == 0 {
 		defaultBbox = bBox{51.247101, 35.614884, 51.564331, 35.775486}
@@ -104,7 +104,7 @@ func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geoc
 	handleError(err)
 
 	var nmResponse []nominatimGeoResponse
-	var result []geocodingResponseElement
+	result := make([]geocodingResponseElement, 10)
 	if err := json.Unmarshal(body, &nmResponse); err != nil {
 		fmt.Println(err.Error())
 		return []geocodingResponseElement{}, err
@@ -112,7 +112,6 @@ func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geoc
 
 	fmt.Println(nmResponse)
 	for i := 0; i < len(nmResponse); i++ {
-		fmt.Println("begin")
 		result[i].Long, _ = strconv.ParseFloat(nmResponse[i].Lon, 32)
 		result[i].Lat, _ = strconv.ParseFloat(nmResponse[i].Lat, 32)
 
@@ -124,7 +123,6 @@ func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geoc
 		result[i].Address = buildAddress(nmResponse[i])
 
 		result[i].DetailedAddress = nmResponse[i].DetailedAddress
-		fmt.Println("end")
 	}
 
 	return result, nil
@@ -150,6 +148,9 @@ func getNominatimReverseGeoResponse(latStr, lonStr string, zoomLevel uint8) (str
 		return "", err
 	}
 
+	fmt.Println("name:", nmResponse.Name)
+	fmt.Println("displayname:", nmResponse.DisplayName)
+	fmt.Println(nmResponse.Name)
 	return nmResponse.Name, nil
 }
 
@@ -165,16 +166,20 @@ func makeAddress(lonStr, latStr string) string {
 		result += suburbName
 	}
 
-	if majorStreetName != "" && majorAndMinorStreetName != "" {
-		if majorStreetName != majorAndMinorStreetName {
-			result += majorStreetName + majorAndMinorStreetName
-		} else {
-			result += majorStreetName
+	if suburbName == majorStreetName && suburbName == majorAndMinorStreetName {
+		// intentionally left blank
+	} else {
+		if majorStreetName != "" && majorAndMinorStreetName != "" {
+			if majorStreetName != majorAndMinorStreetName {
+				result += majorStreetName + majorAndMinorStreetName
+			} else {
+				result += majorStreetName
+			}
 		}
-	}
 
-	if buildingName != "" {
-		result += buildingName
+		if buildingName != "" {
+			result += buildingName
+		}
 	}
 
 	fmt.Println("result:" + result)
@@ -182,7 +187,6 @@ func makeAddress(lonStr, latStr string) string {
 }
 
 func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, error) {
-	fmt.Println("reverse")
 	lonStr := strconv.FormatFloat(lon, 'f', -1, 64)
 	latStr := strconv.FormatFloat(lat, 'f', -1, 64)
 	URL := "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + latStr + "&lon=" + lonStr
@@ -216,8 +220,7 @@ func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 	return nmResponse
 }
 
-func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) ([]nominatimGeoResponse, error) {
-	fmt.Println("autocomp")
+func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) ([]autocompleteResponseElement, error) {
 	defaultBbox := getBBoxFromLocation(lon, lat)
 	if lon == 0 && lat == 0 {
 		defaultBbox = bBox{51.247101, 35.614884, 51.564331, 35.775486}
@@ -232,14 +235,29 @@ func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) 
 	body, err := ioutil.ReadAll(resp.Body)
 	handleError(err)
 
+	result := make([]autocompleteResponseElement, 10)
 	var nmResponse []nominatimGeoResponse
 	if err := json.Unmarshal(body, &nmResponse); err != nil {
 		fmt.Println(err.Error())
-		return []nominatimGeoResponse{}, err
+		return []autocompleteResponseElement{}, err
 	}
 	fmt.Println(nmResponse)
 	nmResponse = rankCompletions(nmResponse)
-	return nmResponse, nil
+
+	for i := 0; i < len(nmResponse); i++ {
+		result[i].Title = nmResponse[i].Name
+		result[i].Long, _ = strconv.ParseFloat(nmResponse[i].Lon, 32)
+		result[i].Lat, _ = strconv.ParseFloat(nmResponse[i].Lat, 32)
+
+		result[i].bBox.Bottom, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[0], 64)
+		result[i].bBox.Left, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[1], 64)
+		result[i].bBox.Right, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[2], 64)
+		result[i].bBox.Top, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[3], 64)
+
+		result[i].Description = nmResponse[i].DisplayName
+	}
+
+	return result, nil
 }
 
 func handleError(err error) {

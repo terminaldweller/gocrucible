@@ -105,9 +105,17 @@ type reversegeocodingResponse struct {
 	Err             string `json:"err,omitempty"`
 }
 
+type autocompleteResponseElement struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	bBox        `json:"boundingbox"`
+	Long        float64 `json:"lon"`
+	Lat         float64 `json:"lat"`
+}
+
 type autocompleteResponse struct {
-	Addresses []nominatimGeoResponse `json:"detailed_address"`
-	Err       string                 `json:"err,omitempty"`
+	Addresses []autocompleteResponseElement `json:"autocomp_results"`
+	Err       string                        `json:"err,omitempty"`
 }
 
 func decodeGeocodingRequest(_ context.Context, r *http.Request) (interface{}, error) {
