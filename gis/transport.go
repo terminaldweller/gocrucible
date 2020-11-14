@@ -158,7 +158,6 @@ func decodeReverseGeocodingRequest(_ context.Context, r *http.Request) (interfac
 		}
 	}
 
-	fmt.Println(params)
 	fmt.Println(request)
 	return request, nil
 }
