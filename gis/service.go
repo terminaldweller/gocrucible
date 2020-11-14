@@ -34,7 +34,6 @@ type nominatimGeoResponse struct {
 	OsmID           float64   `json:"osm_id"`
 	OsmType         string    `json:"osd_type"`
 	PlaceID         float64   `json:"place_id"`
-	Name            string    `json:"name"`
 	Type            string    `json:"type"`
 }
 
@@ -220,6 +219,25 @@ func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 	return nmResponse
 }
 
+func getNameFromLonAndLat(lonStr, latStr string) (string, error) {
+	URL := "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + latStr + "&lon=" + lonStr
+
+	resp, err := http.Get(URL)
+	handleError(err)
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	handleError(err)
+
+	var nmResponse nominatimReverseResponse
+	if err := json.Unmarshal(body, &nmResponse); err != nil {
+		fmt.Println(err.Error())
+		return "", err
+	}
+
+	return nmResponse.Name, nil
+}
+
 func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) ([]autocompleteResponseElement, error) {
 	defaultBbox := getBBoxFromLocation(lon, lat)
 	if lon == 0 && lat == 0 {
@@ -245,7 +263,7 @@ func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) 
 	nmResponse = rankCompletions(nmResponse)
 
 	for i := 0; i < len(nmResponse); i++ {
-		result[i].Title = nmResponse[i].Name
+		result[i].Title, _ = getNameFromLonAndLat(nmResponse[i].Lon, nmResponse[i].Lat)
 		result[i].Long, _ = strconv.ParseFloat(nmResponse[i].Lon, 32)
 		result[i].Lat, _ = strconv.ParseFloat(nmResponse[i].Lat, 32)
 
