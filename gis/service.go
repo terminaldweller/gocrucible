@@ -32,7 +32,7 @@ type nominatimGeoResponse struct {
 	License         string    `json:"licence"`
 	Lon             string    `json:"lon"`
 	OsmID           float64   `json:"osm_id"`
-	OsmType         string    `json:"osd_type"`
+	OsmType         string    `json:"osm_type"`
 	PlaceID         float64   `json:"place_id"`
 	Type            string    `json:"type"`
 }
@@ -55,6 +55,21 @@ type nominatimReverseResponse struct {
 	BoundingBox     [4]string `json:"boundingbox"`
 }
 
+type nominatimAddrLookupResponse struct {
+	DetailedAddress `json:"address"`
+	PlaceID         int64     `json:"place_id"`
+	License         string    `json:"license"`
+	OSMType         string    `json:"osm_type"`
+	OSMID           int64     `json:"osm_id"`
+	Lat             string    `json:"lat"`
+	Lon             string    `json:"lon"`
+	DisplayName     string    `json:"display_name"`
+	Class           string    `json:"class"`
+	Type            string    `json:"type"`
+	Importance      float64   `json:"importance"`
+	BoundingBox     [4]string `json:"boundingbox"`
+}
+
 //FIXME
 func getBBoxFromLocation(lon float64, lat float64) bBox {
 	return bBox{51.247101, 35.614884, 51.564331, 35.775486}
@@ -71,8 +86,7 @@ func makeGeoSearchQuery(address string, limit uint8, tehranBBox bBox) (out strin
 	return URL
 }
 
-//FIXME
-func buildAddress(nmResponse nominatimGeoResponse) string {
+func buildAddress(nmResponse nominatimGeoResponse) (string, error) {
 	var address string
 	if nmResponse.DetailedAddress.Suburb != "" {
 		address += nmResponse.DetailedAddress.Suburb + ","
@@ -84,7 +98,48 @@ func buildAddress(nmResponse nominatimGeoResponse) string {
 		address += nmResponse.DetailedAddress.HouseNumber
 	}
 
-	return address
+	name, _ := getNameFromLonAndLat(nmResponse.Lon, nmResponse.Lat)
+
+	if name != "" {
+		address += name
+	}
+
+	return address, nil
+}
+
+func buildAddressV2(nmResponse nominatimGeoResponse) (string, error) {
+	var result string
+	query := "https://nominatim.openstreetmap.org/lookup?osm_ids="
+
+	switch nmResponse.OsmType {
+	case "relation":
+		query += "R"
+	case "way":
+		query += "W"
+	case "node":
+		query += "N"
+	default:
+	}
+
+	query += strconv.FormatFloat(nmResponse.OsmID, 'f', -1, 64)
+	query += "&format=json&addressdetails=1"
+
+	fmt.Println("")
+	resp, err := http.Get(query)
+	handleError(err)
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	handleError(err)
+
+	nmAddrResponse := make([]nominatimAddrLookupResponse, 10)
+	if err := json.Unmarshal(body, &nmAddrResponse); err != nil {
+		fmt.Println(err.Error())
+		return "", err
+	}
+
+	result = nmAddrResponse[0].DisplayName
+	return result, nil
 }
 
 func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geocodingResponseElement, error) {
@@ -119,7 +174,8 @@ func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geoc
 		result[i].bBox.Right, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[2], 64)
 		result[i].bBox.Top, _ = strconv.ParseFloat(nmResponse[i].BoundingBox[3], 64)
 
-		result[i].Address = buildAddress(nmResponse[i])
+		result[i].Address, _ = buildAddress(nmResponse[i])
+		// result[i].Address, _ = buildAddressV2(nmResponse[i])
 
 		result[i].DetailedAddress = nmResponse[i].DetailedAddress
 	}
@@ -216,7 +272,18 @@ func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, e
 
 // FIXME-need a ranking function
 func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
-	return nmResponse
+	var result []nominatimGeoResponse
+	result = nmResponse
+
+	for _, element := range nmResponse {
+		switch element.Class {
+		case "street":
+		case "square":
+		default:
+		}
+	}
+
+	return result
 }
 
 func getNameFromLonAndLat(lonStr, latStr string) (string, error) {

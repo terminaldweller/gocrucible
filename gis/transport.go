@@ -98,7 +98,6 @@ type geocodingResponse struct {
 	Err           string                     `json:"err,omitempty"`
 }
 
-// FIXME-probably needs libpostal or pelias
 type reversegeocodingResponse struct {
 	DisplayName     string `json:"address"`
 	DetailedAddress `json:"structured_address"`
