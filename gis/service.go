@@ -158,13 +158,14 @@ func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geoc
 	handleError(err)
 
 	var nmResponse []nominatimGeoResponse
-	result := make([]geocodingResponseElement, 10)
 	if err := json.Unmarshal(body, &nmResponse); err != nil {
 		fmt.Println(err.Error())
 		return []geocodingResponseElement{}, err
 	}
+	result := make([]geocodingResponseElement, len(nmResponse))
 
 	fmt.Println(nmResponse)
+
 	for i := 0; i < len(nmResponse); i++ {
 		result[i].Long, _ = strconv.ParseFloat(nmResponse[i].Lon, 32)
 		result[i].Lat, _ = strconv.ParseFloat(nmResponse[i].Lat, 32)
@@ -320,7 +321,6 @@ func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) 
 	body, err := ioutil.ReadAll(resp.Body)
 	handleError(err)
 
-	result := make([]autocompleteResponseElement, 10)
 	var nmResponse []nominatimGeoResponse
 	if err := json.Unmarshal(body, &nmResponse); err != nil {
 		fmt.Println(err.Error())
@@ -328,6 +328,7 @@ func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) 
 	}
 	fmt.Println(nmResponse)
 	nmResponse = rankCompletions(nmResponse)
+	result := make([]autocompleteResponseElement, len(nmResponse))
 
 	for i := 0; i < len(nmResponse); i++ {
 		result[i].Title, _ = getNameFromLonAndLat(nmResponse[i].Lon, nmResponse[i].Lat)
