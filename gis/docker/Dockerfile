@@ -4,7 +4,6 @@ RUN apk add git go
 
 RUN go get github.com/go-kit/kit/transport/http
 RUN go get github.com/go-kit/kit/endpoint
-RUN go get github.com/go-kit/kit/endpoint
 
 RUN git clone http://github.com/terminaldweller/gocrucible
 RUN (cd gocrucible/gis && go build)
