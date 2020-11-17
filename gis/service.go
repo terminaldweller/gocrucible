@@ -276,11 +276,18 @@ func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 	var result []nominatimGeoResponse
 	result = nmResponse
 
+	priorityMap := makePriorityMap()
+
+	var sortDummy [len(nmResponse)]struct {
+		OsmType         string
+		Type            string
+		IndexInResponse int8
+	}
+
 	for _, element := range nmResponse {
-		switch element.Class {
-		case "street":
-		case "square":
-		default:
+		for i := 0; i < len(priorityMap); i++ {
+			if element.OsmType == priorityMap[i].Key && element.Type == priorityMap[i].Value {
+			}
 		}
 	}
 
