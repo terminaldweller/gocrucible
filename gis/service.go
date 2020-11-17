@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 )
 
@@ -274,20 +275,35 @@ func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, e
 // FIXME-need a ranking function
 func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 	var result []nominatimGeoResponse
-	result = nmResponse
+	// result = nmResponse
 
 	priorityMap := makePriorityMap()
 
-	var sortDummy [len(nmResponse)]struct {
-		OsmType         string
-		Type            string
-		IndexInResponse int8
+	var sortDummy []struct {
+		priority        int
+		indexInResponse int
 	}
 
-	for _, element := range nmResponse {
+	for key, element := range nmResponse {
 		for i := 0; i < len(priorityMap); i++ {
 			if element.OsmType == priorityMap[i].Key && element.Type == priorityMap[i].Value {
+				sortDummy[key].indexInResponse = key
+				sortDummy[key].priority = i
 			}
+		}
+	}
+
+	sort.SliceStable(sortDummy, func(i, j int) bool {
+		if i < j {
+			return true
+		} else {
+			return false
+		}
+	})
+
+	for i := 0; i < len(nmResponse); i++ {
+		if sortDummy[i].indexInResponse == i {
+			result[i] = nmResponse[i]
 		}
 	}
 
