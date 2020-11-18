@@ -164,7 +164,7 @@ func (geoService) GeoCoding(searchTerm string, lon float64, lat float64) ([]geoc
 		return []geocodingResponseElement{}, err
 	}
 	result := make([]geocodingResponseElement, len(nmResponse))
-
+	nmResponse = rankCompletions(nmResponse)
 	fmt.Println(nmResponse)
 
 	for i := 0; i < len(nmResponse); i++ {
@@ -272,10 +272,8 @@ func (geoService) ReverseGeoCoding(lon, lat float64) (string, DetailedAddress, e
 	return address, nmResponse.DetailedAddress, nil
 }
 
-// FIXME-need a ranking function
 func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 	var result []nominatimGeoResponse
-	// result = nmResponse
 
 	priorityMap := makePriorityMap()
 
@@ -293,8 +291,6 @@ func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 		}
 	}
 
-	fmt.Println(sortDummy)
-
 	sort.SliceStable(sortDummy, func(i, j int) bool {
 		if sortDummy[i].priority < sortDummy[j].priority {
 			return true
@@ -302,7 +298,6 @@ func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 			return false
 		}
 	})
-	fmt.Println(sortDummy)
 
 	for i := 0; i < len(nmResponse); i++ {
 		if sortDummy[i].indexInResponse == i {
