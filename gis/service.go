@@ -285,25 +285,28 @@ func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 	}
 
 	for key, element := range nmResponse {
+		sortDummy = append(sortDummy, struct{ priority, indexInResponse int }{1000, key})
 		for i := 0; i < len(priorityMap); i++ {
-			if element.OsmType == priorityMap[i].Key && element.Type == priorityMap[i].Value {
-				sortDummy[key].indexInResponse = key
+			if element.Class == priorityMap[i].Key && element.Type == priorityMap[i].Value {
 				sortDummy[key].priority = i
 			}
 		}
 	}
 
+	fmt.Println(sortDummy)
+
 	sort.SliceStable(sortDummy, func(i, j int) bool {
-		if i < j {
+		if sortDummy[i].priority < sortDummy[j].priority {
 			return true
 		} else {
 			return false
 		}
 	})
+	fmt.Println(sortDummy)
 
 	for i := 0; i < len(nmResponse); i++ {
 		if sortDummy[i].indexInResponse == i {
-			result[i] = nmResponse[i]
+			result = append(result, nmResponse[i])
 		}
 	}
 
