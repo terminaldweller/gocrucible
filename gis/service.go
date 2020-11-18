@@ -351,8 +351,11 @@ func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) 
 	nmResponse = rankCompletions(nmResponse)
 	result := make([]autocompleteResponseElement, len(nmResponse))
 
+	dictionary := makeDictionary()
 	for i := 0; i < len(nmResponse); i++ {
-		result[i].Title, _ = getNameFromLonAndLat(nmResponse[i].Lon, nmResponse[i].Lat)
+		persianTitle := dictionary[nmResponse[i].Type]
+		name, _ := getNameFromLonAndLat(nmResponse[i].Lon, nmResponse[i].Lat)
+		result[i].Title = persianTitle + "," + name
 		result[i].Long, _ = strconv.ParseFloat(nmResponse[i].Lon, 32)
 		result[i].Lat, _ = strconv.ParseFloat(nmResponse[i].Lat, 32)
 

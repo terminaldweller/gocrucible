@@ -11,7 +11,7 @@ func main() {
 	var svc GeoService
 	svc = geoService{}
 
-	var portFlag = flag.Int("port", 8080, "determines which port gis should listen on.")
+	var portFlag = flag.Int("port", 8181, "determines which port gis should listen on.")
 	flag.Parse()
 
 	geocodingHandler := httptransport.NewServer(makeGeoCodingEndpoint(svc), decodeGeocodingRequest, encodeGeocodingResponse)
