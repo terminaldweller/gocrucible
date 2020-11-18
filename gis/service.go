@@ -71,6 +71,13 @@ type nominatimAddrLookupResponse struct {
 	BoundingBox     [4]string `json:"boundingbox"`
 }
 
+func handleError(err error) {
+	if err != nil {
+		fmt.Println("Fatal Error ", err.Error())
+		os.Exit(1)
+	}
+}
+
 //FIXME
 func getBBoxFromLocation(lon float64, lat float64) bBox {
 	return bBox{51.247101, 35.614884, 51.564331, 35.775486}
@@ -300,9 +307,7 @@ func rankCompletions(nmResponse []nominatimGeoResponse) []nominatimGeoResponse {
 	})
 
 	for i := 0; i < len(nmResponse); i++ {
-		if sortDummy[i].indexInResponse == i {
-			result = append(result, nmResponse[i])
-		}
+		result = append(result, nmResponse[i])
 	}
 
 	return result
@@ -347,15 +352,19 @@ func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) 
 		fmt.Println(err.Error())
 		return []autocompleteResponseElement{}, err
 	}
-	fmt.Println(nmResponse)
 	nmResponse = rankCompletions(nmResponse)
+	fmt.Println(nmResponse)
 	result := make([]autocompleteResponseElement, len(nmResponse))
 
 	dictionary := makeDictionary()
 	for i := 0; i < len(nmResponse); i++ {
 		persianTitle := dictionary[nmResponse[i].Type]
 		name, _ := getNameFromLonAndLat(nmResponse[i].Lon, nmResponse[i].Lat)
-		result[i].Title = persianTitle + "," + name
+		if persianTitle == "" {
+			result[i].Title = name
+		} else {
+			result[i].Title = persianTitle + "," + name
+		}
 		result[i].Long, _ = strconv.ParseFloat(nmResponse[i].Lon, 32)
 		result[i].Lat, _ = strconv.ParseFloat(nmResponse[i].Lat, 32)
 
@@ -368,11 +377,4 @@ func (geoService) Autocomplete(partialAddress string, lon float64, lat float64) 
 	}
 
 	return result, nil
-}
-
-func handleError(err error) {
-	if err != nil {
-		fmt.Println("Fatal Error ", err.Error())
-		os.Exit(1)
-	}
 }
